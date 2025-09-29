@@ -1,0 +1,386 @@
+/*********************************
+ *	FTP Client	*
+ *********************************/
+
+/*필요 헤더 선언*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <errno.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+
+#define BUFSIZE 65535
+#define MAXSOCK 128
+#define IPNum "127.0.0.1" //Server IP 주소
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+// 함수 프로토타입(Prototype) 
+void removeFrontSpaces(char *);	// remove spaces 
+int tokenize(char *buf, char *tokens[], int maxTokens);
+void switchStdout(const char *newStream);
+void revertStdout();
+void cmd(char *tokens[]);
+size_t cmdwithfile(char *tokens[],char txbuf[]); 
+
+void cmdHelp();			// help
+void cmdCls(char *tokens[]);
+void cmdCcd(char *tokens[]);
+void cmdLs(int sock,char *tokens[]);
+void cmdCd(int sock,char *tokens[]);
+void cmdGet(int sock,char filename[]);
+void cmdPut(int sock,char filename[]);
+
+int main(int argc, char * argv[])
+{
+	int sock;			//소켓디스크립터 저장 int형 변수
+	int fsize;			// 파일 크기
+	char charbuf[1]={0}; 
+	int flag;
+	
+	struct sockaddr_in ServerAddr;	//bind 시킬 구조체 변수
+	char inbuf[BUFSIZE] = {0,};	//명령 라인 저장용 배열
+	char txbuf[BUFSIZE] = {0,};	//명령 라인 전송용 배열
+	char rxbuf[BUFSIZE] = {0,};	//데이터 받을 char형 배열 
+	char cpath[BUFSIZE] = {0,};	//현재 경로 저장 char형 배열
+	
+	char *tokens[10];
+	
+	// 사용법
+	if(argc < 2) { 
+		printf("Usage : %s <PortNum>\n", argv[0]);
+		exit(1);
+	}
+
+	// 소켓 생성 
+	if((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("sock() error");
+		exit(1);
+	}
+
+	//  소켓 주소 구조체 정보 저장*/
+	memset(&ServerAddr, 0x00, sizeof(ServerAddr));
+	ServerAddr.sin_family = AF_INET;
+	ServerAddr.sin_addr.s_addr = inet_addr(IPNum);
+	ServerAddr.sin_port = htons(atoi(argv[1]));
+
+	if(connect(sock, (struct sockaddr *)&ServerAddr, sizeof(ServerAddr)) < 0) {
+		perror("connect() error");
+		exit(1);
+	}
+
+
+	printf("FTP Server connected!\n");
+	
+	while(1) {
+		printf("ftp>> ");
+		fgets(inbuf, BUFSIZE, stdin); //키보드 입력 저장
+		removeFrontSpaces(inbuf); 
+		if (strlen(inbuf)==1) 
+			continue; 
+		strncpy(txbuf, inbuf, BUFSIZE);  
+		
+		char *endptr = (char*)inbuf + MIN(strlen(inbuf), BUFSIZE - 1); 
+		char *cmdptr = strtok(inbuf, " \n"); 
+		
+		char *argptr = inbuf + strlen(cmdptr) +1; 
+		if (argptr > endptr || *argptr == '\0') {
+			argptr = NULL;
+		}else
+		{
+			tokenize(argptr,tokens,10);
+		}
+		//printf("Inbuf argptr = %s \n", argptr);
+		
+		// cls 명령 
+		if(strcmp(cmdptr, "cls")==0) {
+			printf("cls started \n"); 
+			cmdCls(tokens);
+		}
+		
+		// ccd 명령
+		else if(strcmp(cmdptr, "ccd")==0) {
+			printf("ccd started \n");
+			cmdCcd(tokens);
+		}
+		
+		// ls 명령
+		else if(strcmp(cmdptr, "ls")==0) {
+			printf("ls started\n");
+			cmdLs(sock, tokens);
+		}
+		
+		// cd 명령
+		else if(strcmp(cmdptr, "cd")==0) {
+			printf("cd started \n");
+			cmdCd(sock, tokens);    
+		}
+		
+		// get 명령
+		else if(strcmp(cmdptr, "get")==0) {
+			//printf("get started \n");
+			cmdGet(sock,tokens[1]);	
+		}
+			
+		// put 명령
+		else if(strcmp(cmdptr, "put")==0) {
+			printf("put started \n");
+			cmdPut(sock,tokens[1]);	
+		}
+		
+		// help 명령
+		else if(strcmp(cmdptr, "help")==0) {
+			cmdHelp();
+		}
+
+		// quit 명령 
+		else if(strcmp(cmdptr, "quit")==0) {
+			send(sock, txbuf, BUFSIZE, 0);
+			printf("종료 되었습니다\n");
+			close(sock);
+			break;
+		}
+		else printf("CMD error: Type 'help'\n");
+	}	
+	return 0;
+}
+
+
+/*help 명령 함수*/
+void cmdHelp() {
+	printf("-----------------------------------------------------------\n");
+	printf("| ls  [option] : list server directory		|\n");
+	printf("| cls [option] : list client directory    		|\n");
+	printf("| cd  [option] : Change server directory		|\n");
+	printf("| ccd [option] : Change client directory		|\n");
+	printf("| get filename : Download a file from the server	|\n");
+	printf("| put filename: Upload a file from a client	|\n");
+	printf("| quit : exit 					|\n");
+	printf("-----------------------------------------------------------\n");
+}
+
+// 필요한 명령 함수들을 여기에 작성하세요
+void cmdCls(char *tokens[])
+{
+	tokens[0]="ls";
+	cmd(tokens);
+	printf("cls END\n");
+}
+
+
+void cmdCcd(char *tokens[])
+{
+	chdir(tokens[1]);	
+	char buf[256];
+	printf("%s\n",getcwd(buf, 256));
+}
+
+// strcat("abc","bcd") ==> "abcdef"
+void cmdLs(int sock,char *tokens[])
+{
+	char txbuf[100]="ls";
+	char rxbuf[BUFSIZE];
+
+	for(int i=1;tokens[i]!=NULL;i++)
+	{
+		strcat(txbuf," ");
+		strcat(txbuf,tokens[i]);
+	}
+	
+	send(sock,txbuf,100,0);
+	int len=recv(sock,rxbuf,BUFSIZE,0);
+	rxbuf[len]='\0';
+	printf("%s\n", rxbuf);
+}
+
+
+void cmdCd(int sock, char *tokens[])
+{
+	char txbuf[100]="cd";
+	char rxbuf[BUFSIZE];
+
+	for(int i=1;tokens[i]!=NULL;i++)
+	{
+		strcat(txbuf," ");
+		strcat(txbuf,tokens[i]);
+	}
+	
+	send(sock,txbuf,100,0);
+	recv(sock, rxbuf,100,0);
+	printf("%s \n", rxbuf);
+	
+}
+
+
+void cmdGet(int sock,char filename[])
+{
+	// 이부분을 구현하세요
+	char txbuf[BUFSIZE];
+	
+	if(filename==NULL|| strlen(filename)==0)
+	{
+		printf("다운로드 실패\n");
+		return ;
+	}
+	sprintf(txbuf, "get %s", filename); 
+	printf("get started[%s]\n",txbuf);
+
+	send(sock,txbuf,100,0); 
+	
+	char confirm[5];
+	int len=recv(sock,confirm,4,0); 
+	
+	confirm[len]='\0';
+	printf("[%s]",confirm);
+	if(strcmp(confirm,"OOOO")==0)
+	{
+		int count;
+		recv(sock,&count,sizeof(count),0);
+		printf("count= %d\n",count);
+		int fd=open(filename, O_WRONLY|O_CREAT, 0666);     
+
+		for(int i=0;i<count;i++)
+		{
+			len=recv(sock,txbuf,BUFSIZE,0);    
+			write(fd,txbuf,len);
+		}
+		close(fd);
+		printf("다운로드 완료\n"); 
+	}else
+		printf("다운로드 실패\n");
+}
+
+void cmdPut(int sock,char filename[])
+{
+	// tokens[0]="get"; tokens[1]="filename";
+	if(filename==NULL|| strlen(filename)==0)
+	{
+		printf("다운로드 실패\n");
+		return ;
+	}
+	
+	char txbuf[BUFSIZE];
+	int fd=open(filename, O_RDONLY);
+	if(fd>0)
+	{
+		struct stat st;
+		stat(filename, &st);
+		int count = (int)((float)st.st_size/(BUFSIZE+1)+1);
+		printf("file size=%ld,count=%d\n",st.st_size,count);
+		sprintf(txbuf, "put %s", filename); 
+		printf("put started[%s]\n",txbuf);
+
+		send(sock,txbuf,100,0); 
+
+		send(sock,&count,sizeof(count),0); 
+		
+		for(int i=0;i<count;i++)
+		{
+			int len=read(fd,txbuf,BUFSIZE);
+			send(sock,txbuf,len,0);
+		}
+		close(fd);
+	}else
+		printf("파일오픈 실패\n");
+}
+
+
+void removeFrontSpaces(char *buf)
+{ 
+    int i1=0;
+	int i2=0;
+	
+    while (buf[i1] == ' ') {
+		i1++;
+	}
+	while (buf[i1]) {
+		buf[i2]=buf[i1];
+		i1++; i2++;
+	}
+	buf[i2]='\0';
+}
+
+// "ls -al" ==> "ls","-al",NULL
+int tokenize(char *buf, char *tokens[], int maxTokens)
+{
+	int t_count = 1;
+	char *token;
+	token = strtok(buf, " \n");
+
+	while (token != NULL && t_count < maxTokens)
+	{
+		tokens[t_count++] = token;
+		token = strtok(NULL, " \n");
+	}
+
+	tokens[t_count] = NULL;
+	return t_count;
+}
+
+static int fd;
+static fpos_t pos;
+
+void switchStdout(const char *newStream)
+{
+  fflush(stdout);
+  fgetpos(stdout, &pos);
+  fd = dup(fileno(stdout));
+  freopen(newStream, "w", stdout);
+}
+
+void revertStdout()
+{
+  fflush(stdout);
+  dup2(fd, fileno(stdout));
+  close(fd);
+  clearerr(stdout);
+  fsetpos(stdout, &pos);
+}
+
+
+void cmd(char *tokens[])
+{
+	pid_t pid;
+	int status;
+
+	if(tokens[1]!=NULL && tokens[1][0]=='\0')
+	{
+		tokens[1]=NULL;
+		printf("cmd %s\n",tokens[0]);
+	}
+	
+	if(tokens[1]!=NULL && tokens[1][0]!='\0')
+		printf("cmd %s %s\n",tokens[0],tokens[1]);
+	
+	if ((pid = fork()) == 0)
+	{
+		execvp(tokens[0], tokens);	
+	}
+	wait(&status);
+}
+
+size_t cmdwithfile(char *tokens[],char txbuf[])
+{
+	
+	switchStdout("result.txt");
+	cmd(tokens);
+	revertStdout();
+	
+	int fd=open("result.txt",O_RDONLY);
+	size_t size=0;
+	size=read(fd,txbuf,BUFSIZE);
+	txbuf[size]='\0';
+	close(fd);
+	
+	return size;
+}
+

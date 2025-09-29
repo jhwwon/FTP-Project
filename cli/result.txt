@@ -1,0 +1,13 @@
+합계 756
+drwxrwxr-x 2 root root   4096 11월 12 04:40 .
+drwxrwxr-x 4 root root   4096 11월 10 13:21 ..
+-rwxrwxr-x 1 root root  18704 11월 12 04:40 cli
+-rw-rw-r-- 1 root root   9395 11월 12 04:39 cli.c
+-rw-rw-r-- 1 root root  13952 11월 12 04:40 cli.o
+-rw-rw-r-- 1 root root 351187 11월 10 13:08 l.txt
+-rw-rw-r-- 1 root root 351187 11월 10 12:38 long.txt
+-rw-rw-r-- 1 root root    188 11월 10 10:57 makefile
+-rw-rw-r-- 1 root root      0 11월 12 04:42 result.txt
+-rw-rw-r-- 1 root root     12 11월 12 04:12 s.txt
+-rw-rw-r-- 1 root root   2196 11월 10 11:51 short.txt
+cmd ls -al

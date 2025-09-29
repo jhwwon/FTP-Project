@@ -1,0 +1,16 @@
+l.txt
+long.txt
+makefile
+result.txt
+s.txt
+short.txt
+srv
+srv.c
+srv.o
+srv1.c
+srv1.txt
+srv2
+srv2.c
+srv2.txt
+srv3.c
+srv3.txt

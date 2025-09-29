@@ -1,0 +1,15 @@
+합계 448
+drwxrwxr-x 2 root root   4096 11월  7 06:37 .
+drwxr-xr-x 9 root root   4096 11월  7 04:43 ..
+-rwxrwxr-x 1 root root  13344 11월  7 06:34 c
+-rw-rw-r-- 1 root root   5813 11월  7 06:16 citer1-.c
+-rw-rw-r-- 1 root root 351187 10월 12 08:12 long.txt
+-rw-rw-r-- 1 root root     58 11월  7 06:21 m.sh
+-rw-rw-r-- 1 root root      0 11월  7 06:37 out
+-rwxrwxr-x 1 root root  13040 11월  7 06:34 s
+-rwxrwxr-x 1 root root   8480 11월  7 06:34 shell
+-rw-rw-r-- 1 root root    679 11월  7 06:34 shell.c
+-rw-rw-r-- 1 root root   2196 10월 12 08:15 short.txt
+-rwxrwxr-x 1 root root  13040 11월  7 04:43 siter1
+-rw-rw-r-- 1 root root   4471 11월  7 05:07 siter1-.c
+-rw-rw-r-- 1 root root   6383 11월  7 04:37 testcli.c

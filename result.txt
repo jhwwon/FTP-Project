@@ -1,0 +1,18 @@
+a1.txt
+c
+citer1-.c
+cli
+long.txt
+m.sh
+out
+result.txt
+s
+s.txt
+shell
+shell.c
+short.txt
+siter1
+siter1-.c
+srv
+testcli.c
+cmd ls
